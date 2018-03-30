@@ -1,15 +1,10 @@
 MIPSimulator
 ---
 
-.
-├── doc
-│   ├── relatorio.md
-│   └── relatorio.pdf
-├── include
-│   └── funcs.h
-├── readme.md
-├── src
-│   └── sim.c
-└── test
+O relatorio se encontra em doc/relatorio.
 
-4 directories, 5 files
+Para rodar os testes use `make test`.
+
+Para rodar a funcao main use `make main`.
+
+Para rodar tudo apenas `make`.

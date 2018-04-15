@@ -27,7 +27,7 @@ private:
     int pc;
     int32_t mem[MEM_SIZE];
     uint32_t ri;
-    uint32_t opcode, rs, rt, rd, shamnt, funct, imm, address;
+    uint32_t opcode, rs, rt, rd, shamt, funct, imm, address;
     uint32_t rb[32];
     uint32_t * text;
     uint32_t * data;
@@ -56,7 +56,7 @@ void Mips::decode(){
     rs = (ri >> 21) & 0xf;
     rt = (ri >> 16) & 0xf;
     rd = (ri >> 11) & 0xf;
-    shamnt = (ri >> 6) & 0xf;
+    shamt = (ri >> 6) & 0xf;
     funct = ri & 0xff;
     imm = ri & 0x0000FFFF;
     address = (ri & 0x3FFFFFF) << 2;
@@ -64,6 +64,9 @@ void Mips::decode(){
 
 void Mips::execute(){
     switch (opcode) {
+        case LA:
+            opcode = 
+            break;
         case LW:
             rb[rt] = lw(data, rb[rs], imm);
             break;

@@ -1,17 +1,22 @@
-all: main test
+all: clean build run test
 
 .PHONY: docs test
 
-main:
+build:
 	mkdir -p bin
-	gcc src/main.c -I include -o bin/main.out
-	./bin/main.out
+	gcc src/* -I include -o bin/main.out
 
 test:
 	mkdir -p bin
 	g++ test/test.cpp -I include -o bin/test.out &&\
 	./bin/test.out -s ||\
 	./bin/test.out -s
+
+clean:
+	rm -r bin
+
+run:
+	./bin/main.out
 
 docs:
 	pandoc doc/relatorio.md -s -o doc/relatorio.pdf -N

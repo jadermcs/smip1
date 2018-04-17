@@ -24,10 +24,10 @@ enum OPCODES {
 
 class Mips {
 private:
-    int pc;
+    int pc, debug = 1; /* to print debug string */
     int32_t mem[MEM_SIZE];
     uint32_t ri;
-    uint32_t opcode, rs, rt, rd, shamt, funct, imm, address;
+    uint32_t op, rs, rt, rd, shamt, funct, imm, address;
     uint32_t rb[32];
     uint32_t * text;
     uint32_t * data;
@@ -52,31 +52,56 @@ Mips::Mips(const char* textbin, const char* databin) {
 }
 
 void Mips::decode(){
-    opcode = ri >> 26;
-    rs = (ri >> 21) & 0xf;
-    rt = (ri >> 16) & 0xf;
-    rd = (ri >> 11) & 0xf;
-    shamt = (ri >> 6) & 0xf;
-    funct = ri & 0xff;
-    imm = ri & 0x0000FFFF;
-    address = (ri & 0x3FFFFFF) << 2;
+    op = ri >> 26;
+    rs = (ri >> 21) & 0x1f;
+    rt = (ri >> 16) & 0x1f;
+    rd = (ri >> 11) & 0x1f;
+    shamt = (ri >> 6) & 0x1f;
+    funct = ri & 0x3f;
+    imm = ri & 0xffff;
+    address = (ri & 0x3ffffff) << 2;
 }
 
 void Mips::execute(){
-    switch (opcode) {
-        case LA:
-            opcode = 
-            break;
-        case LW:
-            rb[rt] = lw(data, rb[rs], imm);
-            break;
-        case J:
-            pc = (int)address/4;
+    switch (op) {
+        case ADDI:
+        case ADDIU:
+            rb[rt] = rb[rs] + imm;
+            if (debug)
+                printf("[ADD/ADDI] rt=%x rs=%x imm=%x\n", rt, rs, imm);
             break;
         case ADD:
+            rb[rd] = rb[rs] + rb[rt]
+            if (debug)
+                printf("[ADD]\n");
+        case LW:
+            rb[rt] = lw(data, rb[rs], imm);
+            if (debug)
+                printf("[LW]\n");
+            break;
+        case J:
+            pc = (int)address >> 2;
+            if (debug)
+                printf("[JUMP] pc=%x\n", pc);
+            break;
+        case SYSCALL:
+            /* TODO */
+            if (debug)
+                printf("[SYSCALL]\n");
+            break;
+        case BEQ:
+            /* TODO */
+            if (debug)
+                printf("[BEQ]\n");
             break;
         case SUB:
+            /* TODO */
+            if (debug)
+                printf("[SUB]\n");
             break;
+        default:
+            if (debug)
+                printf("[UNKNOWN]\n");
     }
 }
 

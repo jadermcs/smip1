@@ -8,7 +8,7 @@ build:
 
 test:
 	mkdir -p bin
-	g++ test/test.cpp -I include -o bin/test.out &&\
+	gcc test/test.cpp -I include -o bin/test.out &&\
 	./bin/test.out -s ||\
 	./bin/test.out -s
 

@@ -17,9 +17,9 @@
 /* } */
 
 int main(int argc, char *argv[]) {
-    std::string mypath1 =  "mips/text.bin";
-    std::string mypath2 =  "mips/data.bin";
-    Mips myMips = Mips(mypath1.c_str(), mypath2.c_str());
-    /* printf("%x", myMips.mem[0]); */
+    char mypath1[] =  "test/testtext.bin";
+    char mypath2[] =  "test/testdata.bin";
+    Mips myMips = Mips(mypath1, mypath2);
+    myMips.run();
     return 0;
 }

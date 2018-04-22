@@ -5,6 +5,8 @@
 #include <stdio.h>
 
 #define MEM_SIZE 4096
+#define BEBUG_MODE 0 /* 0- no debug 1- basic debug 2- full debug */
+
 
 enum OPCODES {
     // lembrem que so sao considerados os 6 primeiros bits dessas constantes.
@@ -27,11 +29,9 @@ enum FUNCT {
 class Mips {
 private:
     int pc, debug; /* to print debug string */
-    uint32_t ri;
-    uint32_t op, rs, rt, rd, shamt, funct, imm, address;
+    uint32_t ri, op, rs, rt, rd, shamt, funct, address, hi, lo;
     uint32_t rb[32];
-    int32_t k16;
-    uint32_t k26;
+    int16_t imm;
 
 public:
     uint32_t mem[MEM_SIZE];
@@ -47,16 +47,22 @@ public:
     void dump_mem(int, int, char);
     void dump_reg(char);
     void load_binary(const char*, int32_t);
-    uint32_t lw(uint32_t, uint32_t);
+    int32_t lb(uint32_t, int16_t);
+    int32_t lh(uint32_t, int16_t);
+    int32_t lw(uint32_t, int16_t);
+    uint32_t lbu(uint32_t, int16_t);
+    uint32_t lhu(uint32_t, int16_t);
+    void sb(uint32_t, int16_t, int8_t);
+    void sh(uint32_t, int16_t, int16_t);
+    void sw(uint32_t, int16_t, int32_t);
     void syscall();
     void syscall4(uint32_t);
-    uint32_t sign_imm(uint32_t);
     uint32_t decode_inst(uint32_t);
 };
 
 Mips::Mips(const char* textbin, const char* databin) {
     pc = 0;
-    debug = 0; /* 0- no debug 1- basic debug 2- full debug */
+    debug = BEBUG_MODE;
     load_binary(textbin, 0x0);
     load_binary(databin, 0x800);
     for (int i = 0; i < 32; ++i)
@@ -80,24 +86,14 @@ void Mips::run() {
 }
 
 void Mips::decode() {
-    /* rs = (ri << 6) >> 27; */
-    /* rt = (ri << 11) >> 27; */
-    /* rd = (ri << 16) >> 27; */
     rs = (ri >> 21) & 0xf;
     rt = (ri >> 16) & 0xf;
     rd = (ri >> 11) & 0xf;
     shamt = (ri >> 6) & 0xf;
-    /* funct = ri & 0xff; */
-    funct = ri << 26;
-    funct = funct >> 26;
-    /* imm = ri & 0x0000ffff; */
-    /* address = (ri & 0x3ffffff) << 2; */
+    funct = ri & 0xff;
     op = decode_inst(ri);
-    k16 = ri << 16;
-    k16 = k16 >> 16;
-    k26 = ri << 6;
-    k26 = k26 >> 6;
-    address = k26;
+    imm = ri;
+    address = (ri << 6) >> 6;
 }
 
 uint32_t Mips::decode_inst(uint32_t inst) {
@@ -136,14 +132,14 @@ void Mips::execute(){
             break;
         case ADDI:
         case ADDIU:
-            rb[rt] = rb[rs] + k16;//sign_imm(imm);
+            rb[rt] = rb[rs] + imm;
             if (debug)
-                printf("[ADDI] $%d $%d=%x imm=%x\n", rt, rs, rb[rs], sign_imm(imm));
+                printf("[ADDI] $%d $%d=%x imm=%x\n", rt, rs, rb[rs], imm);
             break;
         case LW:
-            rb[rt] = lw(rb[rs], k16);//sign_imm(imm));
+            rb[rt] = lw(rb[rs], imm);
             if (debug)
-                printf("[LW] $%d=%x pos=%x elem=%x imm=%x\n", rt, rb[rt], rs, rb[rs], sign_imm(imm));
+                printf("[LW] $%d=%x pos=%x elem=%x imm=%x\n", rt, rb[rt], rs, rb[rs], imm);
             break;
         case J:
             pc = address;// >> 2;
@@ -157,7 +153,7 @@ void Mips::execute(){
             break;
         case BEQ:
             if (rb[rs] == rb[rt])
-                pc += k16;
+                pc += imm;
             if (debug)
                 printf("[BEQ] $%d=%x $%d=%x address=%x\n", rs, rb[rs],
                                                            rt, rb[rt], pc);
@@ -175,11 +171,26 @@ void Mips::execute(){
 
 void Mips::dump_mem(int start, int end, char format) {
     if (format == 'h')
-        for (start = 0; start < end; ++start)
-            printf("%x\n", mem[start]);
+        for (start; start <= end; ++start)
+            printf("MEM[%d]=%x\n", start, mem[start]);
     else if (format == 'd')
-        for (start = 0; start < end; ++start)
-            printf("%d\n", mem[start]);
+        for (start; start <= end; ++start)
+            printf("MEM[%d]=%d\n", start, mem[start]);
+    else
+        printf("Invalid format.\n");
+}
+
+void Mips::dump_reg(char format) {
+    if (format == 'h') {
+        for (int i = 0; i < 32; ++i)
+            printf("RB[%d]=%x", i, rb[i]);
+        printf("pc=%x hi=%x lo=%x", pc, hi, lo);
+    }
+    else if (format == 'd'){
+        for (int i = 0; i < 32; ++i)
+            printf("RB[%d]=%d", i, rb[i]);
+        printf("pc=%d hi=%d lo=%d", pc, hi, lo);
+    }
     else
         printf("Invalid format.\n");
 }
@@ -189,21 +200,68 @@ void Mips::load_binary(const char* input, int32_t begin){
 
     while (!feof(inlet)) {
         fread(&mem[begin], sizeof(uint32_t), 1, inlet);
-        if (debug)
+        if (debug>1)
             printf("MEM[%d] %x\n", begin, mem[begin]);
         begin++;
     }
     fclose(inlet);
 }
 
-uint32_t Mips::lw(uint32_t rs, uint32_t imm) {
-    if (rs % 4 != 0 || imm % 4 != 0) {
+int32_t Mips::lw(uint32_t rbrs, int16_t cons) {
+    if (rbrs % 4 != 0 || cons % 4 != 0) {
         printf("[error] not alligned memory point.");
         return -2;
     }
     if (debug)
-        printf("LOADWORD = %d\n", (rs + imm ) >> 2);
-  	return mem[(rs ) >> 2]; //+2048?
+        printf("LOADWORD = %d\n", (rbrs + cons) >> 2);
+  	return mem[(rbrs + cons) >> 2]; //+2048?
+}
+
+int32_t Mips::lh(uint32_t rbrs, int16_t cons) {
+    if (rbrs % 4 != 0 || cons % 4 != 0) {
+        printf("[error] not alligned memory point.");
+        return -2;
+    }
+    if (debug)
+        printf("LOADWORD = %d\n", (rbrs + cons) >> 2);
+  	return (mem[(rbrs + cons) >> 2] >> (cons*8)) & 0xffff;
+}
+
+int32_t Mips::lb(uint32_t rbrs, int16_t cons) {
+    if (rbrs % 4 != 0 || cons % 4 != 0) {
+        printf("[error] not alligned memory point.");
+        return -2;
+    }
+    if (debug)
+        printf("LOADWORD = %d\n", (rbrs + cons) >> 2);
+  	return (mem[(rbrs + cons) >> 2] >> (cons*8)) & 0xff;
+}
+
+uint32_t Mips::lhu(uint32_t rbrs, int16_t cons) {
+    return lh(rbrs, cons);
+}
+
+uint32_t Mips::lbu(uint32_t rbrs, int16_t cons) {
+    return lb(rbrs, cons);
+}
+
+void Mips::sw(uint32_t address, int16_t kte, int32_t dado) {
+    // => escreve um inteiro alinhado na memória - endereços múltiplos de 4
+    mem[address/4] = dado;
+}
+
+void Mips::sh(uint32_t address, int16_t kte, int16_t dado) {
+    // => escreve meia palavra, 16 bits - endereços múltiplos de 2
+    uint32_t shifter = kte * 8;
+    uint32_t mask = ~(0xffff << shifter);
+    mem[address/4] = (mem[address/4] & mask) | (dado << shifter);
+}
+
+void Mips::sb(uint32_t address, int16_t kte, int8_t dado) {
+    // => escreve um byte na memória
+    uint32_t shifter = kte * 8;
+    uint32_t mask = ~(0xff << shifter);
+    mem[address/4] = (mem[address/4] & mask) | (dado << shifter);
 }
 
 void Mips::syscall() {
@@ -248,8 +306,5 @@ void Mips::syscall4(uint32_t a0) {
         printf("\n");
 }
 
-uint32_t Mips::sign_imm(uint32_t i) {
-    return ((i >> 15) & 0x1)? (0xffff0000 | i) : i;
-}
 
 #endif /* MIPS_H */

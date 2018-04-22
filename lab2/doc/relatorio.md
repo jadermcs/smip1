@@ -25,15 +25,23 @@ Foram implementadas as seguintes funções através de máscaras e operações *
 
   1. **fetch()**
 
-    keep
+    lê uma instrução da memoria e incrementa o pc
 
   2. **decode()**
 
-    keep
+    decodifica as intruções para os registradores
 
   1. **execute()**
 
-    keep
+    executa os codigos dos registradores e avalia operações executando as chamadas
+    
+  1. **step()**
+
+    executa nesta ordem, fetch, decode, execute
+    
+  1. **run()**
+
+    executa o step até o fim da memoria ou uma chamada de fim de programa
 
 
 Testes e Resultados
